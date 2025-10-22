@@ -5,6 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from flask import Flask, jsonify, request
 from werkzeug.security import generate_password_hash, check_password_hash
 import re
+import sqlite3
 from flask_cors import CORS
 from dotenv import load_dotenv
 
@@ -13,24 +14,45 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
-users = {}
+# Path to the SQLite database
+DB_PATH = os.path.join(os.path.dirname(__file__), 'database.db')
+
+def init_db():
+    """Initialize the database with the users table and initial data."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    # Create table if not exists
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            username TEXT PRIMARY KEY,
+            password TEXT NOT NULL,
+            status INTEGER NOT NULL
+        )
+    ''')
+    
+    # Insert initial data if not already present
+    initial_users = [
+        ("username1", generate_password_hash("Hola.123"), 1),
+        ("username2", generate_password_hash("Hola.123"), 1),
+        ("username3", generate_password_hash("Hola.123"), 1),
+        ("username4", generate_password_hash("Hola.123"), 1)
+    ]
+    
+    for username, hashed_password, status in initial_users:
+        cursor.execute(
+            "INSERT OR IGNORE INTO users (username, password, status) VALUES (?, ?, ?)",
+            (username, hashed_password, status)
+        )
+    
+    conn.commit()
+    conn.close()
 
 def validate_username(username: str) -> bool:
     return bool(username and 3 <= len(username) <= 50 and re.match(r'^[a-zA-Z0-9_]+$', username))
 
 def validate_password(password: str) -> bool:
     return bool(password and len(password) >= 8)
-
-def init_db():
-    users_data = [
-        {"username": "username1", "password": generate_password_hash("Hola.123"), "status": 1},
-        {"username": "username2", "password": generate_password_hash("Hola.123"), "status": 1},
-        {"username": "username3", "password": generate_password_hash("Hola.123"), "status": 1},
-        {"username": "username4", "password": generate_password_hash("Hola.123"), "status": 1}
-    ]
-    for user_data in users_data:
-        if user_data["username"] not in users:
-            users[user_data["username"]] = user_data
 
 @app.route('/register_user', methods=['POST'])
 def register_user():
@@ -67,7 +89,24 @@ def register_user():
             }
         })
     
-    if username in users:
+    hashed_password = generate_password_hash(password)
+    
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "INSERT INTO users (username, password, status) VALUES (?, ?, ?)",
+            (username, hashed_password, status)
+        )
+        conn.commit()
+        return jsonify({
+            "statusCode": 201,
+            "intData": {
+                "message": "Usuario registrado exitosamente",
+                "data": None
+            }
+        })
+    except sqlite3.IntegrityError:
         return jsonify({
             "statusCode": 400,
             "intData": {
@@ -75,22 +114,8 @@ def register_user():
                 "data": None
             }
         })
-    
-    hashed_password = generate_password_hash(password)
-    
-    users[username] = {
-        "username": username,
-        "password": hashed_password,
-        "status": status
-    }
-    
-    return jsonify({
-        "statusCode": 201,
-        "intData": {
-            "message": "Usuario registrado exitosamente",
-            "data": None
-        }
-    })
+    finally:
+        conn.close()
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -107,9 +132,22 @@ def login():
             }
         })
     
-    user = users.get(username)
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT password FROM users WHERE username = ?", (username,))
+    row = cursor.fetchone()
+    conn.close()
     
-    if not user or not check_password_hash(user["password"], password):
+    if not row:
+        return jsonify({
+            "statusCode": 401,
+            "intData": {
+                "message": "Credenciales incorrectas",
+                "data": None
+            }
+        })
+    
+    if not check_password_hash(row[0], password):
         return jsonify({
             "statusCode": 401,
             "intData": {
