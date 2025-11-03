@@ -45,7 +45,7 @@ start_service() {
 }
 
 # Iniciamos cada microservicio
-start_service "api_gateway" "api_gateway" 5000
+start_service "api_gateway" "api_gateway" 5001
 
 
 echo "Todos los microservicios han sido iniciados."
