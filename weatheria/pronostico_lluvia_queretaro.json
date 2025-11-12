@@ -1,0 +1,32 @@
+[
+    {
+        "fecha": "2025-11-12",
+        "condicion": "Partly Cloudy ",
+        "prob_lluvia_api": 0,
+        "llovera_modelo": false
+    },
+    {
+        "fecha": "2025-11-13",
+        "condicion": "Mist",
+        "prob_lluvia_api": 0,
+        "llovera_modelo": false
+    },
+    {
+        "fecha": "2025-11-14",
+        "condicion": "Partly Cloudy ",
+        "prob_lluvia_api": 0,
+        "llovera_modelo": false
+    },
+    {
+        "fecha": "2025-11-15",
+        "condicion": "Sunny",
+        "prob_lluvia_api": 0,
+        "llovera_modelo": false
+    },
+    {
+        "fecha": "2025-11-16",
+        "condicion": "Sunny",
+        "prob_lluvia_api": 0,
+        "llovera_modelo": false
+    }
+]
