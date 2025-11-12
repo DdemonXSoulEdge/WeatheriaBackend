@@ -3,7 +3,6 @@ import json
 import time
 import csv
 import os
-import threading
 from datetime import datetime
 from firebase import firebase
 
@@ -12,12 +11,14 @@ STATION_ID = "ISANTI245"
 FIREBASE_URL = "https://weatheriadx-default-rtdb.firebaseio.com/"
 
 db = firebase.FirebaseApplication(FIREBASE_URL, None)
-LAST_TS_FILE = "last_timestamp.txt"
-JSON_FILE = "registros.json"
-OUTPUT_DIR = "history"
 
+BASE_DIR = os.path.join("src", "WeatheriaBackend", "weatheria")
+LAST_TS_FILE = os.path.join(BASE_DIR, "last_timestamp.txt")
+JSON_FILE = os.path.join(BASE_DIR, "registros.json")
+OUTPUT_DIR = os.path.join(BASE_DIR, "history")
 
 def get_data():
+    """Obtiene datos meteorológicos actuales desde Weather.com"""
     url = (
         f"https://api.weather.com/v2/pws/observations/current?"
         f"stationId={STATION_ID}&format=json&units=m&apiKey={API_KEY}"
@@ -30,11 +31,12 @@ def get_data():
         datos["local_timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         return datos
     except requests.exceptions.RequestException as e:
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Error en la solicitud: {e}")
+        print(f"[{datetime.now()}] Error al obtener datos: {e}")
         return None
 
 
-def fb_upload(datos):
+def process_and_upload(datos):
+    """Procesa los datos y los sube a Firebase"""
     try:
         obs = datos["observations"][0]
         metric = obs["metric"]
@@ -55,68 +57,23 @@ def fb_upload(datos):
 
         db.post("/registros", registro)
         print(f"[{registro['timestamp']}] Datos subidos a Firebase:", registro)
+        return registro
     except Exception as e:
-        print("Error al subir datos a Firebase:", e)
+        print(f"[Error al subir datos a Firebase: {e}]")
+        return None
 
 
-def task_weather_upload():
-    print("🌦 Iniciando obtención de datos meteorológicos...")
-    while True:
-        datos = get_data()
-        if datos:
-            fb_upload(datos)
-        time.sleep(900)  # cada 15 minutos
-
-
-def load_last_timestamp():
-    if os.path.exists(LAST_TS_FILE):
-        with open(LAST_TS_FILE, "r") as f:
-            return f.read().strip()
-    return ""
-
-
-def save_last_timestamp(timestamp):
-    with open(LAST_TS_FILE, "w") as f:
-        f.write(timestamp)
-
-
-def get_firebase_data():
-    try:
-        data = db.get("/registros", None)
-        if data is None:
-            return []
-        registros = list(data.values())
-        registros.sort(key=lambda x: x.get("timestamp", ""))
-        return registros
-    except Exception as e:
-        print(f"Error al leer Firebase: {e}")
-        return []
-
-
-def clear_firebase():
-    try:
-        db.delete("/", "registros")
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 🧹 Firebase limpiado.")
-    except Exception as e:
-        print(f"Error al limpiar Firebase: {e}")
-
-
-def save_to_csv(new_records):
-    if not new_records:
+def save_to_csv(registros):
+    """Guarda los datos en CSV separados por día"""
+    if not registros:
         return
 
     registros_por_dia = {}
-    for reg in new_records:
-        if "preassure" in reg and "pressure" not in reg:
-            reg["pressure"] = reg.pop("preassure")
-
+    for reg in registros:
         try:
             fecha = datetime.fromisoformat(reg["timestamp"]).strftime("%Y-%m-%d")
         except Exception:
-            try:
-                fecha = datetime.strptime(reg["timestamp"], "%Y-%m-%d %H:%M:%S").strftime("%Y-%m-%d")
-            except:
-                fecha = datetime.now().strftime("%Y-%m-%d")
+            fecha = datetime.now().strftime("%Y-%m-%d")
 
         registros_por_dia.setdefault(fecha, []).append(reg)
 
@@ -126,68 +83,58 @@ def save_to_csv(new_records):
         filename = os.path.join(OUTPUT_DIR, f"{fecha}.csv")
         file_exists = os.path.exists(filename)
 
-        all_fields = set()
-        for r in registros_dia:
-            all_fields.update(r.keys())
-        fieldnames = sorted(list(all_fields))
+        fieldnames = sorted(list({k for r in registros_dia for k in r.keys()}))
 
         with open(filename, "a", newline="", encoding="utf-8") as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             if not file_exists:
                 writer.writeheader()
-            for reg in registros_dia:
-                filtered = {k: v for k, v in reg.items() if k in fieldnames}
-                writer.writerow(filtered)
+            writer.writerows(registros_dia)
 
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Guardados {len(registros_dia)} registros en {filename}")
+        print(f"[{datetime.now()}] Guardados {len(registros_dia)} registros en {filename}")
 
 
-def save_to_json(new_records):
+def save_to_json(registros):
+    """Guarda todos los datos en un JSON y lo sube a Firebase"""
     try:
         with open(JSON_FILE, "w", encoding="utf-8") as jsonfile:
-            json.dump(new_records, jsonfile, indent=4, ensure_ascii=False)
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Datos guardados en {JSON_FILE}")
+            json.dump(registros, jsonfile, indent=4, ensure_ascii=False)
+        print(f"[{datetime.now()}] Guardados {len(registros)} registros en {JSON_FILE}")
 
-        db.put("/", "json_data", new_records)
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Datos JSON subidos a Firebase (/json_data)")
-
+        db.put("/", "json_data", registros)
+        print(f"[{datetime.now()}] Datos JSON subidos a Firebase (/json_data)")
     except Exception as e:
         print(f"Error al guardar/subir JSON: {e}")
 
 
-def task_data_sync():
-    print("🔁 Iniciando sincronización con Firebase...")
-    last_timestamp = load_last_timestamp()
+def load_existing_data():
+    """Carga el JSON existente para no perder registros previos"""
+    if os.path.exists(JSON_FILE):
+        try:
+            with open(JSON_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            return []
+    return []
+
+def main_loop():
+    print("Sistema Weatheria iniciado (modo sincronizado cada 15 minutos).")
+    all_records = load_existing_data()
 
     while True:
-        registros = get_firebase_data()
-        if registros:
-            nuevos = [r for r in registros if r.get("timestamp", "") > last_timestamp]
-            if nuevos:
-                print(f"Nuevos registros detectados: {len(nuevos)}")
-                save_to_csv(nuevos)
-                save_to_json(nuevos)
-                last_timestamp = nuevos[-1].get("timestamp", last_timestamp)
-                save_last_timestamp(last_timestamp)
-            else:
-                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] No hay registros nuevos.")
-
-            if len(registros) >= 60:
-                clear_firebase()
-                last_timestamp = ""
-                save_last_timestamp(last_timestamp)
+        datos = get_data()
+        if datos:
+            registro = process_and_upload(datos)
+            if registro:
+                all_records.append(registro)
+                save_to_csv([registro])
+                save_to_json(all_records)
         else:
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] No hay registros en Firebase.")
-        time.sleep(900) 
+            print(f"[{datetime.now()}] No se obtuvieron datos válidos, reintentando...")
+
+        print("Esperando 15 minutos para la siguiente actualización...\n")
+        time.sleep(900)  # 900 segundos = 15 minutos
 
 
 if __name__ == "__main__":
-    print("Sistema Weatheria iniciado.")
-    thread1 = threading.Thread(target=task_weather_upload, daemon=True)
-    thread2 = threading.Thread(target=task_data_sync, daemon=True)
-
-    thread1.start()
-    thread2.start()
-
-    while True:
-        time.sleep(1)
+    main_loop()

@@ -1,0 +1,15 @@
+[
+    {
+        "temp": 22,
+        "heatIndex": 21,
+        "dewpt": 1,
+        "windChill": 22,
+        "windSpeed": 6,
+        "windGust": 7,
+        "humidity": 25,
+        "pressure": 1016.93,
+        "precipRate": 0.0,
+        "precipTotal": 0.0,
+        "timestamp": "2025-11-12 12:53:23"
+    }
+]
