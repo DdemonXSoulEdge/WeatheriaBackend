@@ -25,7 +25,7 @@ def generar_historico(ciudad):
 
     for i in range(1, 61):
         fecha = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
-        url = f"http://api.weatherapi.com/v1/history.json?key={API_KEY}&q={ciudad}&dt={fecha}"
+        url = f"https://api.weatherapi.com/v1/history.json?key={API_KEY}&q={ciudad}&dt={fecha}"
         resp = requests.get(url)
 
         if resp.status_code == 200:
@@ -51,7 +51,7 @@ def generar_historico(ciudad):
 
 def obtener_datos_climaticos(ciudad):
     print(f" Obteniendo datos actuales de {ciudad}...\n")
-    url = f"http://api.weatherapi.com/v1/forecast.json?key={API_KEY}&q={ciudad}&days=5&aqi=no&alerts=no"
+    url = f"https://api.weatherapi.com/v1/forecast.json?key={API_KEY}&q={ciudad}&days=5&aqi=no&alerts=no"
     resp = requests.get(url)
     data = resp.json()
 

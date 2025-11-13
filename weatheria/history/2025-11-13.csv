@@ -1,0 +1,4 @@
+dewpt,heatIndex,humidity,precipRate,precipTotal,pressure,temp,timestamp,windChill,windGust,windSpeed
+0,13,42,0.0,0.0,1017.95,13,2025-11-13 00:26:06,13,4,4
+1,13,43,0.0,0.0,1017.95,13,2025-11-13 00:31:41,13,0,0
+1,13,44,0.0,0.0,1017.95,13,2025-11-13 00:46:44,13,0,0

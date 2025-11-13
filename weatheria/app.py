@@ -12,10 +12,13 @@ FIREBASE_URL = "https://weatheriadx-default-rtdb.firebaseio.com/"
 
 db = firebase.FirebaseApplication(FIREBASE_URL, None)
 
-BASE_DIR = os.path.join("src", "WeatheriaBackend", "weatheria")
+# 🔧 BASE_DIR siempre apunta al directorio real donde está este archivo
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 LAST_TS_FILE = os.path.join(BASE_DIR, "last_timestamp.txt")
 JSON_FILE = os.path.join(BASE_DIR, "registros.json")
 OUTPUT_DIR = os.path.join(BASE_DIR, "history")
+
 
 def get_data():
     """Obtiene datos meteorológicos actuales desde Weather.com"""
@@ -117,8 +120,9 @@ def load_existing_data():
             return []
     return []
 
+
 def main_loop():
-    print("Sistema Weatheria iniciado (modo sincronizado cada 15 minutos).")
+    print("🌦️ Sistema Weatheria iniciado (sincronización cada 15 minutos).")
     all_records = load_existing_data()
 
     while True:
@@ -132,7 +136,7 @@ def main_loop():
         else:
             print(f"[{datetime.now()}] No se obtuvieron datos válidos, reintentando...")
 
-        print("Esperando 15 minutos para la siguiente actualización...\n")
+        print("⏳ Esperando 15 minutos para la siguiente actualización...\n")
         time.sleep(900)  # 900 segundos = 15 minutos
 
 
