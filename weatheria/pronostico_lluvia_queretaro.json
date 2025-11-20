@@ -1,32 +1,32 @@
 [
     {
-        "fecha": "2025-11-13",
-        "condicion": "Mist",
+        "fecha": "2025-11-19",
+        "condicion": "Partly Cloudy ",
         "prob_lluvia_api": 0,
         "llovera_modelo": false
     },
     {
-        "fecha": "2025-11-14",
-        "condicion": "Sunny",
+        "fecha": "2025-11-20",
+        "condicion": "Overcast ",
         "prob_lluvia_api": 0,
         "llovera_modelo": false
     },
     {
-        "fecha": "2025-11-15",
-        "condicion": "Sunny",
+        "fecha": "2025-11-21",
+        "condicion": "Partly Cloudy ",
         "prob_lluvia_api": 0,
         "llovera_modelo": false
     },
     {
-        "fecha": "2025-11-16",
-        "condicion": "Sunny",
+        "fecha": "2025-11-22",
+        "condicion": "Overcast ",
         "prob_lluvia_api": 0,
         "llovera_modelo": false
     },
     {
-        "fecha": "2025-11-17",
-        "condicion": "Sunny",
-        "prob_lluvia_api": 0,
+        "fecha": "2025-11-23",
+        "condicion": "Patchy rain nearby",
+        "prob_lluvia_api": 87,
         "llovera_modelo": false
     }
 ]
